@@ -8,12 +8,12 @@
 
 ## 🧩 Dataset
 
-- **Format**: CSV (`.csv`)
+- **Format**: Excel File (`.xlsx`)
 - **Key column**: `comment`
-- **Data size**: ~XXXX comments (replace with actual count)
+- **Data size**:78500 rows
 - **Example rows**:
 
-''' csv
+''' excel
 comment
 "قیمت خیلی کمه، اصلاً نمی‌صرفه"
 "چرا بیمه نداریم؟"
