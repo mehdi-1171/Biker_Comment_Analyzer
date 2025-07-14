@@ -1,3 +1,7 @@
+"""
+    A class for extracting keywords from Persian comments using NLP techniques.
+
+"""
 from pandas import read_excel, DataFrame
 from numpy import array, asarray
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -11,6 +15,9 @@ class KeyWordExtraction:
     FILE_NAME = "comments.xlsx"
 
     def __init__(self):
+        """
+               Initializes required components for preprocessing and keyword extraction.
+        """
         self.df = DataFrame()
         self.normalizer = Normalizer()
         self.stopwords = set(stopwords_list())
@@ -21,35 +28,63 @@ class KeyWordExtraction:
         self.tfidf_matrix = None
 
     def read_data(self):
+        """
+               Reads the Excel file and keeps only the "comment" column.
+               Drops rows with missing values.
+        """
         self.df = read_excel(os.path.join(DATA_PATH, self.FILE_NAME))
-        # فقط ستون comment رو نگه‌می‌داریم و نال‌ها رو حذف می‌کنیم
         self.df = self.df[["comment"]].dropna().reset_index(drop=True)
 
     def normalize_text(self):
+        """
+             Normalizes text (e.g., fixes spacing, punctuation, common replacements).
+        """
         self.df["normalized"] = self.df["comment"].apply(self.normalizer.normalize)
 
     def tokenize_text(self):
+        """
+        Tokenizes normalized text into words.
+        """
         self.df["tokens"] = self.df["normalized"].apply(word_tokenize)
 
     def eliminate_stopwords(self):
+        """
+        Removes stopwords and manually defined frequent words from the tokens.
+        Filters out tokens with length <= 1.
+        """
         custom_stopwords = self.stopwords.union({'سلام', 'ممنون', 'خواهش', 'افزایش', 'کاهش'})
-        self.df["filtered"] = self.df["tokens"].apply(lambda tokens: [w for w in tokens if w not in custom_stopwords and len(w) > 1])
+        self.df["filtered"] = self.df["tokens"].apply(
+            lambda tokens: [w for w in tokens if w not in custom_stopwords and len(w) > 1]
+        )
 
     def extract_nouns(self):
+        """
+        Extracts only noun tokens using POS tagging, then lemmatizes them.
+        """
         def keep_nouns(tokens):
             tagged = self.tagger.tag(tokens)
             nouns = [w for w, tag in tagged if tag.startswith("N") or tag == "Ne"]
             lemmatized = [self.lemmatizer.lemmatize(w).split("#")[0] for w in nouns]
             return lemmatized
+
         self.df["nouns"] = self.df["filtered"].apply(keep_nouns)
 
     def tf_idf(self):
+        """
+        Calculates TF-IDF matrix from the noun tokens using 2- to 5-gram phrases.
+        Limits to the top 1000 features.
+        """
         corpus = self.df["nouns"].apply(lambda x: ' '.join(x)).tolist()
         vectorizer = TfidfVectorizer(ngram_range=(2, 5), max_features=1000)
         self.tfidf_matrix = vectorizer.fit_transform(corpus)
         self.feature_names = vectorizer.get_feature_names_out()
 
     def top_words(self, top_n=40):
+        """
+        Extracts and prints the top N keyword phrases based on TF-IDF scores.
+
+        :param top_n: Number of top-ranked phrases to return
+        """
         summed = asarray(self.tfidf_matrix.sum(axis=0)).ravel()
         scores = list(zip(self.feature_names, summed))
         sorted_scores = sorted(scores, key=lambda x: x[1], reverse=True)
@@ -57,6 +92,10 @@ class KeyWordExtraction:
             print(f"{word}: {score:.4f}")
 
     def run(self):
+        """
+        Runs the full keyword extraction pipeline:
+        loading data, preprocessing, POS tagging, TF-IDF, and output.
+        """
         self.read_data()
         self.normalize_text()
         self.tokenize_text()
@@ -71,7 +110,7 @@ k = KeyWordExtraction()
 k.run()
 
 
-""" Result simple: """
+""" Result simple tf-idf: """
 # 🔑 Top 20 Keywords:
 # کرایه: 8774.2351
 # اسنپ: 3542.9436
@@ -93,29 +132,6 @@ k.run()
 # مبدا: 1081.0158
 # کمه: 1064.2538
 # بیمه: 1032.0796
-
-
-""" Result tf-idf"""
-# کرایه: 9075.9695
-# اسنپ: 3727.2558
-# قیمت: 3060.3144
-# سفر: 2825.6253
-# طرح: 2604.1616
-# مبلغ: 2213.7489
-# باکس: 2128.5631
-# سرویس: 1877.5064
-# کمیسیون: 1803.6555
-# مقصد: 1693.8258
-# راننده: 1631.0444
-# مبلغ کرایه: 1582.1052
-# موتور: 1515.0396
-# اسنپ باکس: 1509.6169
-# کار: 1506.2837
-# درخواست: 1491.2223
-# مسیر: 1482.3303
-# هزینه: 1449.8180
-# پاداش: 1220.4606
-# مشتری: 1172.5306
 
 """ N -gram"""
 # مبلغ کرایه: 2379.2240
@@ -159,6 +175,7 @@ k.run()
 # ۲۰ درصد: 273.5326
 # طرح تشویق: 272.7084
 
+""" Extract label from keywords """
 # Pricing
 # Fuel
 # Cancelation
